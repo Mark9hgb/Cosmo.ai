@@ -1,7 +1,7 @@
 name: termux_ai_assistant
 description: AI-powered terminal assistant that bridges to Termux for command execution.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+1
 
 environment:
   sdk: ^3.4.0

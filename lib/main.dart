@@ -2,29 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'screens/chat_screen.dart';
+import 'models/ai_model.dart';
+import 'screens/home_screen.dart';
 import 'services/nvidia_nim_service.dart';
 import 'utils/theme_provider.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
-
-  SystemChrome.setPreferredOrientations([
+  
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
   ]);
-
+  
   runApp(
     ProviderScope(
       overrides: [
@@ -34,43 +24,40 @@ void main() {
           ),
         ),
       ],
-      child: const TermuxAIApp(),
+      child: const CosmoApp(),
     ),
   );
 }
 
-class TermuxAIApp extends ConsumerStatefulWidget {
-  const TermuxAIApp({super.key});
+class CosmoApp extends ConsumerStatefulWidget {
+  const CosmoApp({super.key});
 
   @override
-  ConsumerState<TermuxAIApp> createState() => _TermuxAIAppState();
+  ConsumerState<CosmoApp> createState() => _CosmoAppState();
 }
 
-class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
+class _CosmoAppState extends ConsumerState<CosmoApp> {
   final _apiKeyController = TextEditingController();
   bool _isConfigured = false;
 
   @override
   void initState() {
     super.initState();
-    _checkApiKey();
+    _checkConfiguration();
   }
 
-  Future<void> _checkApiKey() async {
+  Future<void> _checkConfiguration() async {
     final prefs = await SharedPreferences.getInstance();
     final storedKey = prefs.getString('nvidia_api_key');
 
     if (storedKey != null && storedKey.isNotEmpty) {
       ref.read(apiKeyProvider.notifier).state = storedKey;
-      setState(() {
-        _isConfigured = true;
-      });
+      setState(() => _isConfigured = true);
     }
   }
 
-  Future<void> _saveApiKey() async {
+  Future<void> _saveConfiguration() async {
     final key = _apiKeyController.text.trim();
-
     if (key.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter an API key')),
@@ -80,29 +67,22 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('nvidia_api_key', key);
-
     ref.read(apiKeyProvider.notifier).state = key;
-
-    setState(() {
-      _isConfigured = true;
-    });
+    setState(() => _isConfigured = true);
   }
 
   @override
   Widget build(BuildContext context) {
     final themeState = ref.watch(themeStateProvider);
-
     final theme = themeState.mode == AppThemeMode.dark
-        ? AppTheme.darkTheme(themeState.seedColor,
-            glassOpacity: themeState.glassOpacity)
-        : AppTheme.lightTheme(themeState.seedColor,
-            glassOpacity: themeState.glassOpacity);
+        ? AppTheme.darkTheme(themeState.seedColor)
+        : AppTheme.lightTheme(themeState.seedColor);
 
     return MaterialApp(
-      title: 'AI Terminal Assistant',
+      title: 'Cosmo AI',
       debugShowCheckedModeBanner: false,
       theme: theme,
-      home: _isConfigured ? const ChatScreen() : _buildSetupScreen(),
+      home: _isConfigured ? const HomeScreen() : _buildSetupScreen(),
     );
   }
 
@@ -111,85 +91,30 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
               Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.surfaceContainerHighest,
+              const Color(0xFF0D0D0D),
             ],
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.terminal,
-                    size: 80,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'AI Terminal Assistant',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Powered by Nvidia NIM + Termux',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                  ),
-                  const SizedBox(height: 48),
-                  TextField(
-                    controller: _apiKeyController,
-                    decoration: InputDecoration(
-                      labelText: 'Nvidia API Key',
-                      hintText: 'Enter your Nvidia NIM API key',
-                      prefixIcon: const Icon(Icons.key),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _saveApiKey,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                      ),
-                      child: const Text('Get Started'),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Setup Instructions',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInstructionStep(
-                    Icons.download,
-                    'Install Termux from F-Droid',
-                  ),
-                  _buildInstructionStep(
-                    Icons.settings,
-                    'Set allow-external-apps = true in termux.properties',
-                  ),
-                  _buildInstructionStep(
-                    Icons.key,
-                    'Get your Nvidia API key from api.nvidia.com',
-                  ),
-                ],
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Spacer(),
+                _buildLogo(),
+                const SizedBox(height: 48),
+                _buildInputField(),
+                const SizedBox(height: 16),
+                _buildGetStartedButton(),
+                const SizedBox(height: 32),
+                _buildSetupGuide(),
+                const Spacer(),
+              ],
             ),
           ),
         ),
@@ -197,14 +122,130 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
     );
   }
 
-  Widget _buildInstructionStep(IconData icon, String text) {
+  Widget _buildLogo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.tertiary,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.terminal, color: Colors.white, size: 28),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Cosmo AI',
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Terminal AI Assistant',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Colors.white60,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputField() {
+    return TextField(
+      controller: _apiKeyController,
+      obscureText: true,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: 'Nvidia API Key',
+        hintText: 'Enter your API key',
+        labelStyle: const TextStyle(color: Colors.white54),
+        hintStyle: const TextStyle(color: Colors.white30),
+        prefixIcon: const Icon(Icons.key, color: Colors.white54),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGetStartedButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _saveConfiguration,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'Get Started',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSetupGuide() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Setup Guide',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildStep(Icons.download, 'Install Termux from F-Droid'),
+          _buildStep(Icons.settings, 'Set allow-external-apps = true'),
+          _buildStep(Icons.key, 'Get API key from build.nvidia.com'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 20),
+          Icon(icon, size: 16, color: Colors.white54),
           const SizedBox(width: 12),
-          Expanded(child: Text(text)),
+          Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13)),
         ],
       ),
     );
