@@ -13,7 +13,6 @@ class TerminalService {
   static const String _extraRunId = 'com.termux.extra.run.id';
   static const String _extraWorkdir = 'com.termux.extra.workdir';
   static const String _extraEnv = 'com.termux.extra.env';
-  static const String _outputFilePrefix = 'termux_ai_output_';
   static const String _exitCodeMarker = '___EXIT_CODE:';
 
   static TerminalService? _instance;
@@ -21,6 +20,7 @@ class TerminalService {
 
   TerminalService._();
 
+  Stream<TerminalOutput> get outputStream => _outputController.stream;
   final _outputController = StreamController<TerminalOutput>.broadcast();
   SharedPreferences? _prefs;
 
