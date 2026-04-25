@@ -134,8 +134,9 @@ You can also respond normally in chat when terminal access isn't needed.
     var toolCallBuffer = '';
     var bufferingToolCall = false;
 
-    await for (final chunk in responseBody.stream.cast<Uint8List>().transform(utf8.decoder)) {
-      lineBuffer += chunk;
+    await for (final chunk in responseBody.stream) {
+      final decoded = utf8.decode(chunk);
+      lineBuffer += decoded;
       final lines = lineBuffer.split('\n');
       lineBuffer = lines.removeLast();
 
