@@ -17,7 +17,6 @@ dependencies:
   
   # Intent handling for Termux communication
   android_intent_plus: ^5.0.2
-  intent: ^2.2.0
   
   # Terminal emulation
   xterm: ^4.0.0
