@@ -15,7 +15,7 @@ class TerminalTab extends Equatable {
   final bool isActive;
   final DateTime createdAt;
   final int commandCount;
-  
+
   const TerminalTab({
     required this.id,
     required this.name,
@@ -25,7 +25,7 @@ class TerminalTab extends Equatable {
     required this.createdAt,
     this.commandCount = 0,
   });
-  
+
   TerminalTab copyWith({
     String? id,
     String? name,
@@ -45,9 +45,10 @@ class TerminalTab extends Equatable {
       commandCount: commandCount ?? this.commandCount,
     );
   }
-  
+
   @override
-  List<Object?> get props => [id, name, workingDirectory, isActive, createdAt, commandCount];
+  List<Object?> get props =>
+      [id, name, workingDirectory, isActive, createdAt, commandCount];
 }
 
 class TerminalTabState extends Equatable {
@@ -56,7 +57,7 @@ class TerminalTabState extends Equatable {
   final bool showTabBar;
   final int maxTabs;
   final int totalCommandCount;
-  
+
   const TerminalTabState({
     this.tabs = const [],
     this.activeTabId,
@@ -64,7 +65,7 @@ class TerminalTabState extends Equatable {
     this.maxTabs = 10,
     this.totalCommandCount = 0,
   });
-  
+
   TerminalTab? get activeTab {
     if (activeTabId == null) return null;
     try {
@@ -73,10 +74,10 @@ class TerminalTabState extends Equatable {
       return tabs.isNotEmpty ? tabs.first : null;
     }
   }
-  
+
   int get tabCount => tabs.length;
   bool get canAddTab => tabs.length < maxTabs;
-  
+
   TerminalTabState copyWith({
     List<TerminalTab>? tabs,
     String? activeTabId,
@@ -92,29 +93,31 @@ class TerminalTabState extends Equatable {
       totalCommandCount: totalCommandCount ?? this.totalCommandCount,
     );
   }
-  
+
   @override
-  List<Object?> get props => [tabs, activeTabId, showTabBar, maxTabs, totalCommandCount];
+  List<Object?> get props =>
+      [tabs, activeTabId, showTabBar, maxTabs, totalCommandCount];
 }
 
 class TerminalTabController extends StateNotifier<TerminalTabState> {
   final TerminalService _terminalService;
   final Ref _ref;
-  
-  TerminalTabController(this._terminalService, this._ref) : super(const TerminalTabState()) {
+
+  TerminalTabController(this._terminalService, this._ref)
+      : super(const TerminalTabState()) {
     addTab();
   }
-  
+
   void addTab({String? name, String? workingDirectory}) {
     if (!state.canAddTab) return;
-    
+
     final id = const Uuid().v4();
     final tabName = name ?? 'Terminal ${state.tabCount + 1}';
-    
+
     final terminal = Terminal(
       maxLines: 10000,
     );
-    
+
     final tab = TerminalTab(
       id: id,
       name: tabName,
@@ -123,111 +126,112 @@ class TerminalTabController extends StateNotifier<TerminalTabState> {
       createdAt: DateTime.now(),
       isActive: true,
     );
-    
-    final updatedTabs = state.tabs.map((t) => t.copyWith(isActive: false)).toList();
+
+    final updatedTabs =
+        state.tabs.map((t) => t.copyWith(isActive: false)).toList();
     updatedTabs.add(tab);
-    
+
     state = state.copyWith(
       tabs: updatedTabs,
       activeTabId: id,
     );
   }
-  
+
   void closeTab(String id) {
     if (state.tabCount <= 1) return;
-    
+
     final tabs = state.tabs.where((t) => t.id != id).toList();
     String? newActiveId = state.activeTabId;
-    
+
     if (state.activeTabId == id) {
       final closedIndex = state.tabs.indexWhere((t) => t.id == id);
       newActiveId = tabs[closedIndex > 0 ? closedIndex - 1 : 0].id;
     }
-    
+
     state = state.copyWith(
       tabs: tabs,
       activeTabId: newActiveId,
     );
   }
-  
+
   void setActiveTab(String id) {
     final tabs = state.tabs.map((t) {
       return t.copyWith(isActive: t.id == id);
     }).toList();
-    
+
     state = state.copyWith(
       tabs: tabs,
       activeTabId: id,
     );
   }
-  
+
   void renameTab(String id, String name) {
     final tabs = state.tabs.map((t) {
       return t.id == id ? t.copyWith(name: name) : t;
     }).toList();
-    
+
     state = state.copyWith(tabs: tabs);
   }
-  
+
   void setWorkingDirectory(String id, String path) {
     final tabs = state.tabs.map((t) {
       return t.id == id ? t.copyWith(workingDirectory: path) : t;
     }).toList();
-    
+
     state = state.copyWith(tabs: tabs);
   }
-  
+
   Future<void> executeInTab(String tabId, String command) async {
     final tab = state.tabs.firstWhere((t) => t.id == tabId);
     tab.terminal.write('\r\n\$ $command\r\n');
-    
+
     final startTime = DateTime.now();
-    
+
     try {
       final output = await _terminalService.executeCommand(
         command,
         workdir: tab.workingDirectory,
       );
-      
+
       tab.terminal.write(output.isEmpty ? '(no output)\r\n' : '$output\r\n');
-      
+
       final duration = DateTime.now().difference(startTime);
-      
+
       _ref.read(commandMemoryProvider.notifier).addCommand(
-        command: command,
-        output: output,
-        exitCode: 0,
-        duration: duration,
-        workingDirectory: tab.workingDirectory,
-      );
-      
+            command: command,
+            output: output,
+            exitCode: 0,
+            duration: duration,
+            workingDirectory: tab.workingDirectory,
+          );
+
       _incrementCommandCount(tabId);
     } catch (e) {
       tab.terminal.write('[Error: $e]\r\n');
-      
+
       _ref.read(commandMemoryProvider.notifier).addCommand(
-        command: command,
-        output: e.toString(),
-        exitCode: 1,
-        duration: DateTime.now().difference(startTime),
-        workingDirectory: tab.workingDirectory,
-      );
-      
+            command: command,
+            output: e.toString(),
+            exitCode: 1,
+            duration: DateTime.now().difference(startTime),
+            workingDirectory: tab.workingDirectory,
+          );
+
       _incrementCommandCount(tabId);
     }
   }
-  
+
   void _incrementCommandCount(String tabId) {
     final tabs = state.tabs.map((t) {
       return t.id == tabId ? t.copyWith(commandCount: t.commandCount + 1) : t;
     }).toList();
-    
+
     state = state.copyWith(
       tabs: tabs,
       totalCommandCount: state.totalCommandCount + 1,
     );
   }
-  
+
   void clearTab(String tabId) {
     final tabs = state.tabs.map((t) {
       if (t.id == tabId) {
@@ -237,51 +241,53 @@ class TerminalTabController extends StateNotifier<TerminalTabState> {
       }
       return t;
     }).toList();
-    
+
     state = state.copyWith(tabs: tabs);
   }
-  
+
   void clearAllTabs() {
     final tabs = state.tabs.map((t) {
       final newTerminal = Terminal(maxLines: 10000);
       newTerminal.write('Terminal cleared\r\n');
       return t.copyWith(terminal: newTerminal);
     }).toList();
-    
+
     state = state.copyWith(tabs: tabs);
   }
-  
+
   void duplicateTab(String id) {
     if (!state.canAddTab) return;
-    
+
     final source = state.tabs.firstWhere((t) => t.id == id);
     addTab(
       name: '${source.name} (copy)',
       workingDirectory: source.workingDirectory,
     );
-    
+
     final newTab = state.activeTab;
     if (newTab != null) {
-      for (final line in source.terminal.buffer.lines) {
-        newTab.terminal.write(line);
+      final content = source.terminal.buffer.getText();
+      if (content.isNotEmpty) {
+        newTab.terminal.write(content);
       }
     }
   }
-  
+
   void toggleTabBar() {
     state = state.copyWith(showTabBar: !state.showTabBar);
   }
-  
+
   void reorderTabs(int oldIndex, int newIndex) {
     final tabs = [...state.tabs];
     final tab = tabs.removeAt(oldIndex);
     tabs.insert(newIndex, tab);
-    
+
     state = state.copyWith(tabs: tabs);
   }
 }
 
-final terminalTabControllerProvider = StateNotifierProvider<TerminalTabController, TerminalTabState>((ref) {
+final terminalTabControllerProvider =
+    StateNotifierProvider<TerminalTabController, TerminalTabState>((ref) {
   final terminal = TerminalService.instance;
   return TerminalTabController(terminal, ref);
 });
@@ -290,24 +296,23 @@ class MultiTabTerminal extends ConsumerWidget {
   final bool embedded;
   final Function(TerminalTab)? onTabChanged;
   final Function(String)? onCommandExecuted;
-  
+
   const MultiTabTerminal({
     super.key,
     this.embedded = true,
     this.onTabChanged,
     this.onCommandExecuted,
   });
-  
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(terminalTabControllerProvider);
     final controller = ref.read(terminalTabControllerProvider.notifier);
-    final theme = Theme.of(context);
-    
+
     if (!state.showTabBar) {
       return _buildTerminalView(context, state, controller);
     }
-    
+
     return Column(
       children: [
         _buildTabBar(context, state, controller),
@@ -317,10 +322,11 @@ class MultiTabTerminal extends ConsumerWidget {
       ],
     );
   }
-  
-  Widget _buildTabBar(BuildContext context, TerminalTabState state, TerminalTabController controller) {
+
+  Widget _buildTabBar(BuildContext context, TerminalTabState state,
+      TerminalTabController controller) {
     final theme = Theme.of(context);
-    
+
     return Container(
       height: 40,
       decoration: BoxDecoration(
@@ -340,25 +346,26 @@ class MultiTabTerminal extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final tab = state.tabs[index];
                 final isActive = tab.id == state.activeTabId;
-                
+
                 return GestureDetector(
                   onTap: () {
                     controller.setActiveTab(tab.id);
                     onTabChanged?.call(tab);
                   },
-                  onLongPress: () => _showTabOptions(context, tab, controller),
+                  onLongPress: () =>
+                      _showTabOptions(context, tab, controller, state),
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 150),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: isActive 
-                        ? theme.colorScheme.surface
-                        : Colors.transparent,
+                      color: isActive
+                          ? theme.colorScheme.surface
+                          : Colors.transparent,
                       border: Border(
                         bottom: BorderSide(
-                          color: isActive 
-                            ? theme.colorScheme.primary
-                            : Colors.transparent,
+                          color: isActive
+                              ? theme.colorScheme.primary
+                              : Colors.transparent,
                           width: 2,
                         ),
                       ),
@@ -369,9 +376,9 @@ class MultiTabTerminal extends ConsumerWidget {
                         Icon(
                           Icons.terminal,
                           size: 14,
-                          color: isActive 
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: isActive
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
                         const SizedBox(width: 6),
                         Flexible(
@@ -379,9 +386,10 @@ class MultiTabTerminal extends ConsumerWidget {
                             tab.name,
                             style: TextStyle(
                               fontSize: 12,
-                              color: isActive 
-                                ? theme.colorScheme.onSurface
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                              color: isActive
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurface
+                                      .withOpacity(0.6),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -393,7 +401,8 @@ class MultiTabTerminal extends ConsumerWidget {
                             child: Icon(
                               Icons.close,
                               size: 14,
-                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.4),
                             ),
                           ),
                         ],
@@ -421,16 +430,17 @@ class MultiTabTerminal extends ConsumerWidget {
       ),
     );
   }
-  
-  Widget _buildTerminalView(BuildContext context, TerminalTabState state, TerminalTabController controller) {
+
+  Widget _buildTerminalView(BuildContext context, TerminalTabState state,
+      TerminalTabController controller) {
     final activeTab = state.activeTab;
-    
+
     if (activeTab == null) {
       return const Center(
         child: Text('No active terminal'),
       );
     }
-    
+
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Container(
@@ -447,21 +457,27 @@ class MultiTabTerminal extends ConsumerWidget {
             activeTab.terminal,
             autofocus: true,
             backgroundOpacity: 1,
-            theme: TerminalThemes.oneDark,
+            theme: TerminalThemes.whiteOnBlack,
             textStyle: const TerminalStyle(
               fontFamily: 'JetBrainsMono',
               fontSize: 13,
             ),
             onSecondaryTapDown: (details, offset) {
-              _showTerminalContextMenu(context, details.globalPosition, activeTab, controller);
+              _showTerminalContextMenu(
+                  context, details.globalPosition, activeTab, controller);
             },
           ),
         ),
       ),
     );
   }
-  
-  void _showTabOptions(BuildContext context, TerminalTab tab, TerminalTabController controller) {
+
+  void _showTabOptions(
+    BuildContext context,
+    TerminalTab tab,
+    TerminalTabController controller,
+    TerminalTabState state,
+  ) {
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -506,10 +522,11 @@ class MultiTabTerminal extends ConsumerWidget {
       ),
     );
   }
-  
-  void _showRenameDialog(BuildContext context, TerminalTab tab, TerminalTabController controller) {
+
+  void _showRenameDialog(
+      BuildContext context, TerminalTab tab, TerminalTabController controller) {
     final textController = TextEditingController(text: tab.name);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -537,7 +554,7 @@ class MultiTabTerminal extends ConsumerWidget {
       ),
     );
   }
-  
+
   void _showTerminalContextMenu(
     BuildContext context,
     Offset position,
@@ -546,7 +563,8 @@ class MultiTabTerminal extends ConsumerWidget {
   ) {
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
+      position: RelativeRect.fromLTRB(
+          position.dx, position.dy, position.dx, position.dy),
       items: [
         PopupMenuItem(
           child: const ListTile(

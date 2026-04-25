@@ -1,5 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.aiassistant.termux_ai_assistant">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Termux RUN_COMMAND permission -->
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
@@ -30,6 +29,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
@@ -42,18 +42,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        
-        <!-- Termux command receiver -->
-        <receiver 
-            android:name=".TermuxCommandReceiver"
-            android:exported="true"
-            android:permission="com.termux.permission.RUN_COMMAND">
-            <intent-filter>
-                <action android:name="com.termux.RUN_COMMAND" />
-                <action android:name="com.termux.RUN_COMMAND_GET_OUTPUT" />
-            </intent-filter>
-        </receiver>
-        
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
@@ -62,6 +51,10 @@
     <!-- Query to verify Termux is installed -->
     <queries>
         <package android:name="com.termux" />
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
         <intent>
             <action android:name="com.termux.RUN_COMMAND" />
             <data android:mimeType="text/plain" />

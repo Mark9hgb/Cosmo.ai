@@ -6,16 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:uuid/uuid.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:share_plus/share_plus.dart';
 import '../models/chat_message.dart';
 import '../services/terminal_service.dart';
 import '../services/nvidia_nim_service.dart';
 import '../services/project_service.dart';
 import '../services/command_memory_service.dart';
-import '../services/git_service.dart';
 import '../utils/theme_provider.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/command_block_widget.dart';
@@ -36,19 +36,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
-  
+
   late TabController _tabController;
   late Terminal _terminal;
   late ProjectService _projectService;
-  
+
   bool _isLoading = false;
   bool _isExecuting = false;
-  bool _isThinking = false;
   bool _showThinkingIndicator = false;
   String _currentThought = '';
   final List<CommandBlock> _pendingCommands = [];
   StreamSubscription? _terminalSubscription;
-  
+
   List<ChatSession> _sessions = [];
   ChatSession? _currentSession;
 
@@ -58,7 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     _tabController = TabController(length: 5, vsync: this);
     _terminal = Terminal(maxLines: 10000);
     _projectService = ProjectService.instance;
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeServices();
     });
@@ -68,17 +67,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     await _projectService.initialize();
     await ref.read(terminalServiceProvider).initialize();
     _sessions = await _projectService.getSessions();
-    
+
     if (_sessions.isNotEmpty) {
       _currentSession = _sessions.first;
       for (final msg in _currentSession!.messages) {
         ref.read(nimMessagesProvider.notifier).addAssistantMessage(msg.content);
       }
     }
-    
+
     _terminal.write('AI Terminal Assistant ready.\r\n');
     _terminal.write('Type a message to start...\r\n\r\n');
-    
+
     if (mounted) setState(() {});
   }
 
@@ -93,7 +92,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -110,14 +109,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
     _messageController.clear();
     _focusNode.unfocus();
-    
+
     final messages = ref.read(nimMessagesProvider);
     ref.read(nimMessagesProvider.notifier).addUserMessage(message);
-    
+
     if (_currentSession == null) {
       _currentSession = await _projectService.createSession();
     }
-    
+
     setState(() {
       _isLoading = true;
       _showThinkingIndicator = true;
@@ -126,25 +125,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
     try {
       final service = ref.read(nvidiaNimServiceProvider);
-      final updatedMessages = [...messages,
-        ChatMessage(id: const Uuid().v4(), content: message, role: UserRole.user, timestamp: DateTime.now())
+      final updatedMessages = [
+        ...messages,
+        ChatMessage(
+            id: const Uuid().v4(),
+            content: message,
+            role: UserRole.user,
+            timestamp: DateTime.now())
       ];
-      
-      _terminal.writeln('\r\n\$ $message');
-      _terminal.writeln('─────────────────────────\r\n');
-      
+
+      _terminal.write('\r\n\$ $message\r\n');
+      _terminal.write('─────────────────────────\r\n\r\n');
+
       final stream = service.sendMessageStream(updatedMessages);
-      
+
       final buffer = StringBuffer();
-      
+
       await for (final response in stream) {
         setState(() {
           _currentThought = _generateThought(buffer.toString());
         });
-        
+
         buffer.write(response.content);
-        ref.read(nimMessagesProvider.notifier).updateLastAssistantMessage(buffer.toString());
-        
+        ref
+            .read(nimMessagesProvider.notifier)
+            .updateLastAssistantMessage(buffer.toString());
+
         final detectedCommands = _parseCommandBlocks(buffer.toString());
         for (final cmd in detectedCommands) {
           if (!_pendingCommands.any((p) => p.command == cmd.command)) {
@@ -152,17 +158,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             await _executeCommand(cmd);
           }
         }
-        
+
         if (mounted) setState(() {});
       }
-      
+
       final finalContent = buffer.toString();
       if (finalContent.isNotEmpty) {
-        ref.read(nimMessagesProvider.notifier).updateLastAssistantMessage(finalContent);
+        ref
+            .read(nimMessagesProvider.notifier)
+            .updateLastAssistantMessage(finalContent);
         _currentSession = _currentSession?.copyWith(
-          messages: [..._currentSession!.messages,
-            ChatMessage(id: const Uuid().v4(), content: message, role: UserRole.user, timestamp: DateTime.now()),
-            ChatMessage(id: const Uuid().v4(), content: finalContent, role: UserRole.assistant, timestamp: DateTime.now()),
+          messages: [
+            ..._currentSession!.messages,
+            ChatMessage(
+                id: const Uuid().v4(),
+                content: message,
+                role: UserRole.user,
+                timestamp: DateTime.now()),
+            ChatMessage(
+                id: const Uuid().v4(),
+                content: finalContent,
+                role: UserRole.assistant,
+                timestamp: DateTime.now()),
           ],
         );
         if (_currentSession != null) {
@@ -170,8 +187,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         }
       }
     } catch (e) {
-      _terminal.writeln('\r\n[Error: $e]\r\n');
-      ref.read(nimMessagesProvider.notifier).addAssistantMessage('Error: ${e.toString()}');
+      _terminal.write('\r\n[Error: $e]\r\n');
+      ref
+          .read(nimMessagesProvider.notifier)
+          .addAssistantMessage('Error: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -184,7 +203,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   String _generateThought(String partialResponse) {
     if (partialResponse.isEmpty) return 'Analyzing your request...';
     if (partialResponse.length < 20) return 'Processing your request...';
-    if (partialResponse.contains('```bash')) return 'Identified command to execute';
+    if (partialResponse.contains('```bash'))
+      return 'Identified command to execute';
     if (_pendingCommands.isNotEmpty) return 'Executing command in Termux...';
     return 'Generating response...';
   }
@@ -192,20 +212,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   List<CommandBlock> _parseCommandBlocks(String content) {
     final blocks = <CommandBlock>[];
     final regex = RegExp(r'```(?:bash|termux|sh)\s*\n([\s\S]*?)```');
-    
+
     for (final match in regex.allMatches(content)) {
       final command = match.group(1)?.trim() ?? '';
       if (command.isNotEmpty) {
         blocks.add(CommandBlock(command: command));
       }
     }
-    
+
     return blocks;
   }
 
   Future<void> _executeCommand(CommandBlock block) async {
     if (_isExecuting) return;
-    
+
     setState(() {
       _isExecuting = true;
       final index = _pendingCommands.indexOf(block);
@@ -213,53 +233,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         _pendingCommands[index] = block.copyWith(isExecuting: true);
       }
     });
-    
+
     final terminal = ref.read(terminalServiceProvider);
     final startTime = DateTime.now();
-    
-    _terminal.writeln('\r\n> ${block.command}\r\n');
-    _terminal.writeln('Executing...\r\n');
-    
+
+    _terminal.write('\r\n> ${block.command}\r\n');
+    _terminal.write('Executing...\r\n');
+
     try {
       final output = await terminal.executeCommand(block.command);
       final duration = DateTime.now().difference(startTime);
-      
+
       ref.read(commandMemoryProvider.notifier).addCommand(
-        command: block.command,
-        output: output,
-        exitCode: 0,
-        duration: duration,
-      );
-      
-      _terminal.writeln(output.isEmpty ? '(no output)' : output);
-      _terminal.writeln('\r\n[Completed in ${duration.inSeconds}s, exit code: 0]\r\n');
-      
+            command: block.command,
+            output: output,
+            exitCode: 0,
+            duration: duration,
+          );
+
+      _terminal.write('${output.isEmpty ? '(no output)' : output}\r\n');
+      _terminal
+          .write('\r\n[Completed in ${duration.inSeconds}s, exit code: 0]\r\n');
+
       setState(() {
         final index = _pendingCommands.indexOf(block);
         if (index >= 0) {
           _pendingCommands[index] = block.copyWith(
             executedAt: DateTime.now(),
-            result: CommandResult(output: output, exitCode: 0, completedAt: DateTime.now(), duration: duration),
+            result: CommandResult(
+                output: output,
+                exitCode: 0,
+                completedAt: DateTime.now(),
+                duration: duration),
             isExecuting: false,
           );
         }
       });
     } catch (e) {
-      _terminal.writeln('\r\n[Error: $e]\r\n');
-      
+      _terminal.write('\r\n[Error: $e]\r\n');
+
       ref.read(commandMemoryProvider.notifier).addCommand(
-        command: block.command,
-        output: e.toString(),
-        exitCode: 1,
-        duration: DateTime.now().difference(startTime),
-      );
-      
+            command: block.command,
+            output: e.toString(),
+            exitCode: 1,
+            duration: DateTime.now().difference(startTime),
+          );
+
       setState(() {
         final index = _pendingCommands.indexOf(block);
         if (index >= 0) {
           _pendingCommands[index] = block.copyWith(
             executedAt: DateTime.now(),
-            result: CommandResult(output: e.toString(), exitCode: 1, completedAt: DateTime.now(), duration: DateTime.now().difference(startTime)),
+            result: CommandResult(
+                output: e.toString(),
+                exitCode: 1,
+                completedAt: DateTime.now(),
+                duration: DateTime.now().difference(startTime)),
             isExecuting: false,
           );
         }
@@ -274,41 +303,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+      const SnackBar(
+          content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
     );
   }
 
   Future<void> _exportSession() async {
     if (_currentSession == null) return;
-    
-    showDialog(context: context, barrierDismissible: false, builder: (context) => const ProcessingOverlay(
-      title: 'Exporting Session',
-      subtitle: 'Preparing your chat export...',
-    ));
-    
+
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const ProcessingOverlay(
+              title: 'Exporting Session',
+              subtitle: 'Preparing your chat export...',
+            ));
+
     try {
       final exportPath = await _projectService.exportSession(_currentSession!);
       Navigator.pop(context);
-      await Share.shareXFiles([XFile(exportPath)], subject: 'Termux AI Session Export');
+      await Share.shareXFiles([XFile(exportPath)],
+          subject: 'Termux AI Session Export');
     } catch (e) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Export failed: $e')));
     }
   }
 
   Future<void> _importSession() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['zip', 'json']);
+    final result = await file_picker.FilePicker.platform.pickFiles(
+      type: file_picker.FileType.custom,
+      allowedExtensions: ['zip', 'json'],
+    );
     if (result == null || result.files.isEmpty) return;
-    
+
     try {
-      final imported = await _projectService.importSession(result.files.first.path!);
+      final imported =
+          await _projectService.importSession(result.files.first.path!);
       if (imported != null) {
         _sessions = await _projectService.getSessions();
         setState(() => _currentSession = imported);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Imported: ${imported.name}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Imported: ${imported.name}')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Import failed: $e')));
     }
   }
 
@@ -340,7 +381,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   Future<void> _showSessionsDrawer() async {
     _sessions = await _projectService.getSessions();
     if (!mounted) return;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -355,10 +396,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Text('Chat History', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Chat History',
+                      style: Theme.of(context).textTheme.titleLarge),
                   const Spacer(),
-                  IconButton(icon: const Icon(Icons.add), onPressed: () { Navigator.pop(context); _createNewSession(); }),
-                  IconButton(icon: const Icon(Icons.upload_file), onPressed: () { Navigator.pop(context); _importSession(); }),
+                  IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _createNewSession();
+                      }),
+                  IconButton(
+                      icon: const Icon(Icons.upload_file),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _importSession();
+                      }),
                 ],
               ),
             ),
@@ -371,13 +423,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   final session = _sessions[index];
                   final isSelected = session.id == _currentSession?.id;
                   return ListTile(
-                    leading: Icon(isSelected ? Icons.chat_bubble : Icons.chat_bubble_outline, color: isSelected ? Theme.of(context).colorScheme.primary : null),
+                    leading: Icon(
+                        isSelected
+                            ? Icons.chat_bubble
+                            : Icons.chat_bubble_outline,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : null),
                     title: Text(session.name),
-                    subtitle: Text('${session.messages.length} messages', style: Theme.of(context).textTheme.bodySmall),
-                    trailing: PopupMenuButton(
+                    subtitle: Text('${session.messages.length} messages',
+                        style: Theme.of(context).textTheme.bodySmall),
+                    trailing: PopupMenuButton<String>(
                       itemBuilder: (context) => [
-                        PopupMenuItem(value: 'export', child: const Text('Export')),
-                        PopupMenuItem(value: 'delete', child: const Text('Delete')),
+                        const PopupMenuItem<String>(
+                            value: 'export', child: Text('Export')),
+                        const PopupMenuItem<String>(
+                            value: 'delete', child: Text('Delete')),
                       ],
                       onSelected: (value) async {
                         if (value == 'export') {
@@ -388,8 +449,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           await _projectService.deleteSession(session.id);
                           _sessions = await _projectService.getSessions();
                           if (_currentSession?.id == session.id) {
-                            _currentSession = _sessions.isNotEmpty ? _sessions.first : null;
-                            ref.read(nimMessagesProvider.notifier).clearMessages();
+                            _currentSession =
+                                _sessions.isNotEmpty ? _sessions.first : null;
+                            ref
+                                .read(nimMessagesProvider.notifier)
+                                .clearMessages();
                           }
                           setState(() {});
                         }
@@ -414,9 +478,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   Future<void> _showSettingsDrawer() async {
     final themeState = ref.read(themeStateProvider);
     final themeNotifier = ref.read(themeStateProvider.notifier);
-    
+
     if (!mounted) return;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -432,9 +496,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             children: [
               Row(
                 children: [
-                  Text('Settings', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Settings',
+                      style: Theme.of(context).textTheme.titleLarge),
                   const Spacer(),
-                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context)),
                 ],
               ),
               const Divider(),
@@ -444,12 +511,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 subtitle: Text(themeState.mode.name.toUpperCase()),
                 trailing: SegmentedButton<AppThemeMode>(
                   segments: const [
-                    ButtonSegment(value: AppThemeMode.light, icon: Icon(Icons.light_mode)),
-                    ButtonSegment(value: AppThemeMode.system, icon: Icon(Icons.auto_mode)),
-                    ButtonSegment(value: AppThemeMode.dark, icon: Icon(Icons.dark_mode)),
+                    ButtonSegment(
+                        value: AppThemeMode.light,
+                        icon: Icon(Icons.light_mode)),
+                    ButtonSegment(
+                        value: AppThemeMode.system,
+                        icon: Icon(Icons.auto_mode)),
+                    ButtonSegment(
+                        value: AppThemeMode.dark, icon: Icon(Icons.dark_mode)),
                   ],
                   selected: {themeState.mode},
-                  onSelectionChanged: (values) => themeNotifier.setMode(values.first),
+                  onSelectionChanged: (values) =>
+                      themeNotifier.setMode(values.first),
                 ),
               ),
               const SizedBox(height: 8),
@@ -471,7 +544,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                           width: 3,
                         ),
                       ),
-                      child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                      child: isSelected
+                          ? const Icon(Icons.check,
+                              color: Colors.white, size: 20)
+                          : null,
                     ),
                   );
                 }).toList(),
@@ -507,9 +583,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                       ),
                       ListTile(
                         title: const Text('Success Rate'),
-                        trailing: Text(memoryState.totalExecuted > 0 
-                          ? '${(memoryState.successCount / memoryState.totalExecuted * 100).round()}%'
-                          : 'N/A'),
+                        trailing: Text(memoryState.totalExecuted > 0
+                            ? '${(memoryState.successCount / memoryState.totalExecuted * 100).round()}%'
+                            : 'N/A'),
                       ),
                       ListTile(
                         title: const Text('Favorites'),
@@ -536,16 +612,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
-        ),
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
       ),
     );
   }
 
   void _showCommandMemoryDialog() {
     final memoryState = ref.read(commandMemoryProvider);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -562,11 +638,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   cmd.isSuccess ? Icons.check_circle : Icons.error,
                   color: cmd.isSuccess ? Colors.green : Colors.red,
                 ),
-                title: Text(cmd.command, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-                subtitle: Text('${cmd.duration.inMilliseconds}ms • Used ${cmd.useCount}x'),
+                title: Text(cmd.command,
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+                subtitle: Text(
+                    '${cmd.duration.inMilliseconds}ms • Used ${cmd.useCount}x'),
                 trailing: IconButton(
                   icon: Icon(cmd.isFavorite ? Icons.star : Icons.star_border),
-                  onPressed: () => ref.read(commandMemoryProvider.notifier).toggleFavorite(cmd.id),
+                  onPressed: () => ref
+                      .read(commandMemoryProvider.notifier)
+                      .toggleFavorite(cmd.id),
                 ),
               );
             },
@@ -594,11 +675,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     final messages = ref.watch(nimMessagesProvider);
     final themeState = ref.watch(themeStateProvider);
     final theme = Theme.of(context);
-    
-    final effectiveTheme = themeState.mode == AppThemeMode.dark 
-      ? AppTheme.darkTheme(themeState.seedColor, glassOpacity: themeState.glassOpacity)
-      : AppTheme.lightTheme(themeState.seedColor, glassOpacity: themeState.glassOpacity);
-    
+
+    final effectiveTheme = themeState.mode == AppThemeMode.dark
+        ? AppTheme.darkTheme(themeState.seedColor,
+            glassOpacity: themeState.glassOpacity)
+        : AppTheme.lightTheme(themeState.seedColor,
+            glassOpacity: themeState.glassOpacity);
+
     return Theme(
       data: effectiveTheme,
       child: Scaffold(
@@ -633,7 +716,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               if (_showThinkingIndicator)
                 ThinkingIndicator(
                   thought: _currentThought,
-                  onCancel: () => setState(() => _showThinkingIndicator = false),
+                  onCancel: () =>
+                      setState(() => _showThinkingIndicator = false),
                 ).animate().fadeIn(),
               _buildInputBar(),
             ],
@@ -652,34 +736,77 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
             children: [
-              IconButton(icon: const Icon(Icons.menu), onPressed: _showSessionsDrawer),
+              IconButton(
+                  icon: const Icon(Icons.menu), onPressed: _showSessionsDrawer),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_currentSession?.name ?? 'New Chat', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(_currentSession?.name ?? 'New Chat',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold)),
                     if (_currentSession != null)
-                      Text('${_currentSession!.messages.length} messages', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+                      Text('${_currentSession!.messages.length} messages',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.6))),
                   ],
                 ),
               ),
-              IconButton(icon: const Icon(Icons.settings), onPressed: _showSettingsDrawer),
-              PopupMenuButton(
+              IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: _showSettingsDrawer),
+              PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),
-                itemBuilder: (context) => [
-                  PopupMenuItem(value: 'export_zip', child: ListTile(leading: const Icon(Icons.archive), title: const Text('Export as ZIP'), contentPadding: EdgeInsets.zero)),
-                  PopupMenuItem(value: 'export_md', child: ListTile(leading: const Icon(Icons.description), title: const Text('Export as Markdown'), contentPadding: EdgeInsets.zero)),
-                  PopupMenuItem(value: 'export_html', child: ListTile(leading: const Icon(Icons.html), title: const Text('Export as HTML'), contentPadding: EdgeInsets.zero)),
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                      value: 'export_zip',
+                      child: ListTile(
+                          leading: Icon(Icons.archive),
+                          title: Text('Export as ZIP'),
+                          contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem<String>(
+                      value: 'export_md',
+                      child: ListTile(
+                          leading: Icon(Icons.description),
+                          title: Text('Export as Markdown'),
+                          contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem<String>(
+                      value: 'export_html',
+                      child: ListTile(
+                          leading: Icon(Icons.html),
+                          title: Text('Export as HTML'),
+                          contentPadding: EdgeInsets.zero)),
                   const PopupMenuDivider(),
-                  PopupMenuItem(value: 'new_session', child: ListTile(leading: const Icon(Icons.add), title: const Text('New Session'), contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem<String>(
+                      value: 'new_session',
+                      child: ListTile(
+                          leading: Icon(Icons.add),
+                          title: Text('New Session'),
+                          contentPadding: EdgeInsets.zero)),
                 ],
                 onSelected: (value) {
                   switch (value) {
-                    case 'export_zip': _exportSession();
-                    case 'export_md': _exportAsMarkdown();
-                    case 'export_html': _exportAsHtml();
-                    case 'new_session': _createNewSession();
+                    case 'export_zip':
+                      _exportSession();
+                      break;
+                    case 'export_md':
+                      _exportAsMarkdown();
+                      break;
+                    case 'export_html':
+                      _exportAsHtml();
+                      break;
+                    case 'new_session':
+                      _createNewSession();
+                      break;
                   }
                 },
               ),
@@ -689,8 +816,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
-                  ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1.seconds),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.primary),
+                  )
+                      .animate(onPlay: (c) => c.repeat())
+                      .rotate(duration: 1.seconds),
                 ),
             ],
           ),
@@ -706,7 +837,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       child: TabBar(
         controller: _tabController,
         labelColor: Theme.of(context).colorScheme.primary,
-        unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        unselectedLabelColor:
+            Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
         indicatorColor: Theme.of(context).colorScheme.primary,
         tabs: const [
           Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Chat'),
@@ -725,7 +857,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       padding: const EdgeInsets.all(16),
       itemCount: messages.length + (_pendingCommands.isNotEmpty ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == messages.length && _pendingCommands.isNotEmpty) return _buildCommandBlocksList();
+        if (index == messages.length && _pendingCommands.isNotEmpty)
+          return _buildCommandBlocksList();
         if (index >= messages.length) return const SizedBox.shrink();
         final message = messages[index];
         final isUser = message.role == UserRole.user;
@@ -741,20 +874,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                 if (!isUser && _containsCodeBlock(message.content))
                   _buildCodeContent(message.content)
                 else
-                  StreamingText(text: message.content, style: TextStyle(color: isUser ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface)),
+                  StreamingText(
+                      text: message.content,
+                      style: TextStyle(
+                          color: isUser
+                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                              : Theme.of(context).colorScheme.onSurface)),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(_formatTimestamp(message.timestamp), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                    Text(_formatTimestamp(message.timestamp),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5))),
                     if (!isUser)
-                      IconButton(icon: const Icon(Icons.copy, size: 14), onPressed: () => _copyToClipboard(message.content), visualDensity: VisualDensity.compact, tooltip: 'Copy'),
+                      IconButton(
+                          icon: const Icon(Icons.copy, size: 14),
+                          onPressed: () => _copyToClipboard(message.content),
+                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Copy'),
                   ],
                 ),
               ],
             ),
           ),
-        ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: isUser ? 0.1 : -0.1, delay: (index * 50).ms);
+        )
+            .animate()
+            .fadeIn(delay: (index * 50).ms)
+            .slideX(begin: isUser ? 0.1 : -0.1, delay: (index * 50).ms);
       },
     );
   }
@@ -782,13 +932,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         children: [
           Row(
             children: [
-              Text('bash', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('bash',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
               const Spacer(),
-              IconButton(icon: const Icon(Icons.copy, size: 16), onPressed: () => _copyToClipboard(code), tooltip: 'Copy'),
-              IconButton(icon: const Icon(Icons.play_arrow, size: 16), onPressed: () => _executeCommand(CommandBlock(command: code)), tooltip: 'Execute'),
+              IconButton(
+                  icon: const Icon(Icons.copy, size: 16),
+                  onPressed: () => _copyToClipboard(code),
+                  tooltip: 'Copy'),
+              IconButton(
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  onPressed: () => _executeCommand(CommandBlock(command: code)),
+                  tooltip: 'Execute'),
             ],
           ),
-          HighlightView(code, language: 'bash', theme: githubTheme, padding: EdgeInsets.zero, textStyle: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13)),
+          HighlightView(code,
+              language: 'bash',
+              theme: githubTheme,
+              padding: EdgeInsets.zero,
+              textStyle:
+                  const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13)),
         ],
       ),
     );
@@ -804,28 +969,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
     return blocks;
   }
 
-  bool _containsCodeBlock(String content) => content.contains('```bash') || content.contains('```termux');
+  bool _containsCodeBlock(String content) =>
+      content.contains('```bash') || content.contains('```termux');
 
   Widget _buildCommandBlocksList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Executed Commands:', style: Theme.of(context).textTheme.titleSmall),
+        Text('Executed Commands:',
+            style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         for (final cmd in _pendingCommands)
-          CommandBlockWidget(commandBlock: cmd, onExecute: () => _executeCommand(cmd)),
+          CommandBlockWidget(
+              commandBlock: cmd, onExecute: () => _executeCommand(cmd)),
       ],
     );
   }
 
   Widget _buildFileExplorerView() {
-    return FileExplorerWidget(terminalService: ref.read(terminalServiceProvider));
+    return FileExplorerWidget(
+        terminalService: ref.read(terminalServiceProvider));
   }
 
   Widget _buildCommandMemoryView() {
     final memoryState = ref.watch(commandMemoryProvider);
     final stats = ref.watch(commandMemoryProvider.notifier).getCommandStats();
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -837,14 +1006,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           const SizedBox(height: 16),
           _buildCommandStats(stats),
           const SizedBox(height: 16),
-          Text('Recent Commands', style: Theme.of(context).textTheme.titleMedium),
+          Text('Recent Commands',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           for (final cmd in memoryState.recent)
             ListTile(
-              leading: Icon(cmd.isSuccess ? Icons.check_circle : Icons.error, color: cmd.isSuccess ? Colors.green : Colors.red),
-              title: Text(cmd.command, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-              subtitle: Text('${cmd.duration.inMilliseconds}ms • ${cmd.useCount}x use'),
-              trailing: IconButton(icon: Icon(cmd.isFavorite ? Icons.star : Icons.star_border), onPressed: () => ref.read(commandMemoryProvider.notifier).toggleFavorite(cmd.id)),
+              leading: Icon(cmd.isSuccess ? Icons.check_circle : Icons.error,
+                  color: cmd.isSuccess ? Colors.green : Colors.red),
+              title: Text(cmd.command,
+                  style:
+                      const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+              subtitle: Text(
+                  '${cmd.duration.inMilliseconds}ms • ${cmd.useCount}x use'),
+              trailing: IconButton(
+                  icon: Icon(cmd.isFavorite ? Icons.star : Icons.star_border),
+                  onPressed: () => ref
+                      .read(commandMemoryProvider.notifier)
+                      .toggleFavorite(cmd.id)),
             ),
         ],
       ),
@@ -854,18 +1032,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   Widget _buildMemoryStats(CommandMemoryState memoryState) {
     return Row(
       children: [
-        Expanded(child: _buildStatCard('Total', memoryState.totalExecuted.toString(), Icons.terminal)),
+        Expanded(
+            child: _buildStatCard(
+                'Total', memoryState.totalExecuted.toString(), Icons.terminal)),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatCard('Success', memoryState.successCount.toString(), Icons.check, color: Colors.green)),
+        Expanded(
+            child: _buildStatCard(
+                'Success', memoryState.successCount.toString(), Icons.check,
+                color: Colors.green)),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatCard('Errors', memoryState.errorCount.toString(), Icons.error, color: Colors.red)),
+        Expanded(
+            child: _buildStatCard(
+                'Errors', memoryState.errorCount.toString(), Icons.error,
+                color: Colors.red)),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatCard('Favorites', memoryState.favoriteIds.length.toString(), Icons.star, color: Colors.amber)),
+        Expanded(
+            child: _buildStatCard('Favorites',
+                memoryState.favoriteIds.length.toString(), Icons.star,
+                color: Colors.amber)),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, {Color? color}) {
+  Widget _buildStatCard(String label, String value, IconData icon,
+      {Color? color}) {
     final theme = Theme.of(context);
     return GlassContainer(
       padding: const EdgeInsets.all(12),
@@ -874,7 +1064,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         children: [
           Icon(icon, color: color ?? theme.colorScheme.primary, size: 24),
           const SizedBox(height: 4),
-          Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          Text(value,
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold)),
           Text(label, style: theme.textTheme.bodySmall),
         ],
       ),
@@ -882,25 +1074,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 
   Widget _buildCommandStats(Map<String, int> stats) {
-    final sortedStats = stats.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sortedStats = stats.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final topCommands = sortedStats.take(10).toList();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Most Used Commands', style: Theme.of(context).textTheme.titleMedium),
+        Text('Most Used Commands',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         for (final entry in topCommands)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                Text(entry.key, style: const TextStyle(fontFamily: 'monospace')),
+                Text(entry.key,
+                    style: const TextStyle(fontFamily: 'monospace')),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
-                  child: Text('${entry.value}x', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onPrimaryContainer)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Text('${entry.value}x',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimaryContainer)),
                 ),
               ],
             ),
@@ -924,8 +1127,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
                   focusNode: _focusNode,
                   decoration: InputDecoration(
                     hintText: 'Type a message...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
                   ),
                   maxLines: 4,
                   minLines: 1,
@@ -955,36 +1160,5 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   }
 }
 
-final terminalServiceProvider = Provider<TerminalService>((ref) => TerminalService.instance);
-
-class XFile {
-  final String path;
-  XFile(this.path);
-}
-
-class ProcessingOverlay extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  const ProcessingOverlay({super.key, required this.title, this.subtitle});
-  
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black54,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-              if (subtitle != null) ...[const SizedBox(height: 8), Text(subtitle!, style: Theme.of(context).textTheme.bodySmall)],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+final terminalServiceProvider =
+    Provider<TerminalService>((ref) => TerminalService.instance);

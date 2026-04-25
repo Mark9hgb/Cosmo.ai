@@ -8,7 +8,7 @@ import 'utils/theme_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -17,14 +17,14 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  
+
   runApp(
     ProviderScope(
       overrides: [
@@ -49,17 +49,17 @@ class TermuxAIApp extends ConsumerStatefulWidget {
 class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
   final _apiKeyController = TextEditingController();
   bool _isConfigured = false;
-  
+
   @override
   void initState() {
     super.initState();
     _checkApiKey();
   }
-  
+
   Future<void> _checkApiKey() async {
     final prefs = await SharedPreferences.getInstance();
     final storedKey = prefs.getString('nvidia_api_key');
-    
+
     if (storedKey != null && storedKey.isNotEmpty) {
       ref.read(apiKeyProvider.notifier).state = storedKey;
       setState(() {
@@ -67,35 +67,37 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
       });
     }
   }
-  
+
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
-    
+
     if (key.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter an API key')),
       );
       return;
     }
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('nvidia_api_key', key);
-    
+
     ref.read(apiKeyProvider.notifier).state = key;
-    
+
     setState(() {
       _isConfigured = true;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final themeState = ref.watch(themeStateProvider);
-    
+
     final theme = themeState.mode == AppThemeMode.dark
-      ? AppTheme.darkTheme(themeState.seedColor, glassOpacity: themeState.glassOpacity)
-      : AppTheme.lightTheme(themeState.seedColor, glassOpacity: themeState.glassOpacity);
-    
+        ? AppTheme.darkTheme(themeState.seedColor,
+            glassOpacity: themeState.glassOpacity)
+        : AppTheme.lightTheme(themeState.seedColor,
+            glassOpacity: themeState.glassOpacity);
+
     return MaterialApp(
       title: 'AI Terminal Assistant',
       debugShowCheckedModeBanner: false,
@@ -103,7 +105,7 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
       home: _isConfigured ? const ChatScreen() : _buildSetupScreen(),
     );
   }
-  
+
   Widget _buildSetupScreen() {
     return Scaffold(
       body: Container(
@@ -139,8 +141,8 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
                   Text(
                     'Powered by Nvidia NIM + Termux',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                   ),
                   const SizedBox(height: 48),
                   TextField(
@@ -194,7 +196,7 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
       ),
     );
   }
-  
+
   Widget _buildInstructionStep(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -207,7 +209,7 @@ class _TermuxAIAppState extends ConsumerState<TermuxAIApp> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _apiKeyController.dispose();

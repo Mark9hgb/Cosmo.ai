@@ -1,5 +1,5 @@
 package com.aiassistant.termux_ai_assistant
 
-import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.android.FlutterActivity
 
-class MainActivity: FlutterFragmentActivity()
+class MainActivity: FlutterActivity()

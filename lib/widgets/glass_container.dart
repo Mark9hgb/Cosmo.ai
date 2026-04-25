@@ -11,7 +11,7 @@ class GlassContainer extends StatelessWidget {
   final double opacity;
   final Border? border;
   final List<BoxShadow>? boxShadow;
-  
+
   const GlassContainer({
     super.key,
     required this.child,
@@ -24,13 +24,13 @@ class GlassContainer extends StatelessWidget {
     this.border,
     this.boxShadow,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final backgroundColor = color ?? 
-      theme.colorScheme.surface.withOpacity(opacity);
-    
+    final backgroundColor =
+        color ?? theme.colorScheme.surface.withOpacity(opacity);
+
     return Container(
       margin: margin,
       child: ClipRRect(
@@ -42,10 +42,11 @@ class GlassContainer extends StatelessWidget {
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.circular(borderRadius),
-              border: border ?? Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.2),
-                width: 1,
-              ),
+              border: border ??
+                  Border.all(
+                    color: theme.colorScheme.outline.withOpacity(0.2),
+                    width: 1,
+                  ),
               boxShadow: boxShadow,
             ),
             child: child,
@@ -62,7 +63,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? leading;
   final bool showBackButton;
   final VoidCallback? onBackPressed;
-  
+
   const GlassAppBar({
     super.key,
     required this.title,
@@ -71,7 +72,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showBackButton = false,
     this.onBackPressed,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return GlassContainer(
@@ -79,19 +80,19 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
       padding: EdgeInsets.zero,
       child: AppBar(
         title: Text(title),
-        leading: showBackButton 
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: onBackPressed ?? () => Navigator.pop(context),
-            )
-          : leading,
+        leading: showBackButton
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: onBackPressed ?? () => Navigator.pop(context),
+              )
+            : leading,
         actions: actions,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
     );
   }
-  
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
@@ -101,7 +102,7 @@ class GlassFAB extends StatelessWidget {
   final IconData icon;
   final String? tooltip;
   final Color? backgroundColor;
-  
+
   const GlassFAB({
     super.key,
     required this.onPressed,
@@ -109,11 +110,11 @@ class GlassFAB extends StatelessWidget {
     this.tooltip,
     this.backgroundColor,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
@@ -121,8 +122,8 @@ class GlassFAB extends StatelessWidget {
         child: FloatingActionButton(
           onPressed: onPressed,
           tooltip: tooltip,
-          backgroundColor: backgroundColor ?? 
-            theme.colorScheme.primaryContainer.withOpacity(0.8),
+          backgroundColor: backgroundColor ??
+              theme.colorScheme.primaryContainer.withOpacity(0.8),
           child: Icon(icon),
         ),
       ),
@@ -135,7 +136,7 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
-  
+
   const GlassCard({
     super.key,
     required this.child,
@@ -143,11 +144,9 @@ class GlassCard extends StatelessWidget {
     this.padding,
     this.margin,
   });
-  
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return GlassContainer(
       margin: margin ?? const EdgeInsets.all(8),
       padding: padding ?? const EdgeInsets.all(16),
@@ -174,7 +173,7 @@ class GlassTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final FocusNode? focusNode;
-  
+
   const GlassTextField({
     super.key,
     this.controller,
@@ -190,11 +189,11 @@ class GlassTextField extends StatelessWidget {
     this.onSubmitted,
     this.focusNode,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: BackdropFilter(
@@ -242,18 +241,18 @@ class AnimatedTabBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<AnimatedTabItem> items;
-  
+
   const AnimatedTabBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.items,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return GlassContainer(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       borderRadius: 16,
@@ -263,16 +262,16 @@ class AnimatedTabBar extends StatelessWidget {
           final index = entry.key;
           final item = entry.value;
           final isSelected = index == currentIndex;
-          
+
           return GestureDetector(
             onTap: () => onTap(index),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected 
-                  ? theme.colorScheme.primary.withOpacity(0.2)
-                  : Colors.transparent,
+                color: isSelected
+                    ? theme.colorScheme.primary.withOpacity(0.2)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -281,8 +280,8 @@ class AnimatedTabBar extends StatelessWidget {
                   Icon(
                     item.icon,
                     color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.6),
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                   if (item.label != null) ...[
                     const SizedBox(width: 8),
@@ -290,9 +289,10 @@ class AnimatedTabBar extends StatelessWidget {
                       item.label!,
                       style: TextStyle(
                         color: isSelected
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withOpacity(0.6),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -309,7 +309,7 @@ class AnimatedTabBar extends StatelessWidget {
 class AnimatedTabItem {
   final IconData icon;
   final String? label;
-  
+
   const AnimatedTabItem({
     required this.icon,
     this.label,

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:equatable/equatable.dart';
 
 enum UserRole { user, assistant, system }
@@ -11,7 +10,7 @@ class ChatMessage extends Equatable {
   final bool isStreaming;
   final List<CommandBlock>? commandBlocks;
   final MessageMetadata? metadata;
-  
+
   const ChatMessage({
     required this.id,
     required this.content,
@@ -21,7 +20,7 @@ class ChatMessage extends Equatable {
     this.commandBlocks,
     this.metadata,
   });
-  
+
   ChatMessage copyWith({
     String? id,
     String? content,
@@ -41,33 +40,34 @@ class ChatMessage extends Equatable {
       metadata: metadata ?? this.metadata,
     );
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'content': content,
-    'role': role.name,
-    'timestamp': timestamp.toIso8601String(),
-    'isStreaming': isStreaming,
-    'commandBlocks': commandBlocks?.map((e) => e.toJson()).toList(),
-    'metadata': metadata?.toJson(),
-  };
-  
+        'id': id,
+        'content': content,
+        'role': role.name,
+        'timestamp': timestamp.toIso8601String(),
+        'isStreaming': isStreaming,
+        'commandBlocks': commandBlocks?.map((e) => e.toJson()).toList(),
+        'metadata': metadata?.toJson(),
+      };
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-    id: json['id'] as String,
-    content: json['content'] as String,
-    role: UserRole.values.firstWhere((e) => e.name == json['role']),
-    timestamp: DateTime.parse(json['timestamp'] as String),
-    isStreaming: json['isStreaming'] as bool? ?? false,
-    commandBlocks: (json['commandBlocks'] as List?)
-        ?.map((e) => CommandBlock.fromJson(e))
-        .toList(),
-    metadata: json['metadata'] != null 
-        ? MessageMetadata.fromJson(json['metadata']) 
-        : null,
-  );
-  
+        id: json['id'] as String,
+        content: json['content'] as String,
+        role: UserRole.values.firstWhere((e) => e.name == json['role']),
+        timestamp: DateTime.parse(json['timestamp'] as String),
+        isStreaming: json['isStreaming'] as bool? ?? false,
+        commandBlocks: (json['commandBlocks'] as List?)
+            ?.map((e) => CommandBlock.fromJson(e))
+            .toList(),
+        metadata: json['metadata'] != null
+            ? MessageMetadata.fromJson(json['metadata'])
+            : null,
+      );
+
   @override
-  List<Object?> get props => [id, content, role, timestamp, isStreaming, commandBlocks, metadata];
+  List<Object?> get props =>
+      [id, content, role, timestamp, isStreaming, commandBlocks, metadata];
 }
 
 class MessageMetadata extends Equatable {
@@ -75,28 +75,29 @@ class MessageMetadata extends Equatable {
   final int? modelLatency;
   final String? modelUsed;
   final List<String>? tags;
-  
+
   const MessageMetadata({
     this.tokenCount,
     this.modelLatency,
     this.modelUsed,
     this.tags,
   });
-  
+
   Map<String, dynamic> toJson() => {
-    'tokenCount': tokenCount,
-    'modelLatency': modelLatency,
-    'modelUsed': modelUsed,
-    'tags': tags,
-  };
-  
-  factory MessageMetadata.fromJson(Map<String, dynamic> json) => MessageMetadata(
-    tokenCount: json['tokenCount'],
-    modelLatency: json['modelLatency'],
-    modelUsed: json['modelUsed'],
-    tags: (json['tags'] as List?)?.cast<String>(),
-  );
-  
+        'tokenCount': tokenCount,
+        'modelLatency': modelLatency,
+        'modelUsed': modelUsed,
+        'tags': tags,
+      };
+
+  factory MessageMetadata.fromJson(Map<String, dynamic> json) =>
+      MessageMetadata(
+        tokenCount: json['tokenCount'],
+        modelLatency: json['modelLatency'],
+        modelUsed: json['modelUsed'],
+        tags: (json['tags'] as List?)?.cast<String>(),
+      );
+
   @override
   List<Object?> get props => [tokenCount, modelLatency, modelUsed, tags];
 }
@@ -107,7 +108,7 @@ class CommandBlock extends Equatable {
   final DateTime? executedAt;
   final CommandResult? result;
   final bool isExecuting;
-  
+
   const CommandBlock({
     required this.command,
     this.language = 'bash',
@@ -115,7 +116,7 @@ class CommandBlock extends Equatable {
     this.result,
     this.isExecuting = false,
   });
-  
+
   CommandBlock copyWith({
     String? command,
     String? language,
@@ -131,29 +132,30 @@ class CommandBlock extends Equatable {
       isExecuting: isExecuting ?? this.isExecuting,
     );
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'command': command,
-    'language': language,
-    'executedAt': executedAt?.toIso8601String(),
-    'result': result?.toJson(),
-    'isExecuting': isExecuting,
-  };
-  
+        'command': command,
+        'language': language,
+        'executedAt': executedAt?.toIso8601String(),
+        'result': result?.toJson(),
+        'isExecuting': isExecuting,
+      };
+
   factory CommandBlock.fromJson(Map<String, dynamic> json) => CommandBlock(
-    command: json['command'] as String,
-    language: json['language'] as String? ?? 'bash',
-    executedAt: json['executedAt'] != null 
-        ? DateTime.parse(json['executedAt']) 
-        : null,
-    result: json['result'] != null 
-        ? CommandResult.fromJson(json['result']) 
-        : null,
-    isExecuting: json['isExecuting'] as bool? ?? false,
-  );
-  
+        command: json['command'] as String,
+        language: json['language'] as String? ?? 'bash',
+        executedAt: json['executedAt'] != null
+            ? DateTime.parse(json['executedAt'])
+            : null,
+        result: json['result'] != null
+            ? CommandResult.fromJson(json['result'])
+            : null,
+        isExecuting: json['isExecuting'] as bool? ?? false,
+      );
+
   @override
-  List<Object?> get props => [command, language, executedAt, result, isExecuting];
+  List<Object?> get props =>
+      [command, language, executedAt, result, isExecuting];
 }
 
 class CommandResult extends Equatable {
@@ -161,30 +163,30 @@ class CommandResult extends Equatable {
   final int exitCode;
   final DateTime completedAt;
   final Duration duration;
-  
+
   const CommandResult({
     required this.output,
     required this.exitCode,
     required this.completedAt,
     required this.duration,
   });
-  
+
   bool get isSuccess => exitCode == 0;
-  
+
   Map<String, dynamic> toJson() => {
-    'output': output,
-    'exitCode': exitCode,
-    'completedAt': completedAt.toIso8601String(),
-    'durationMs': duration.inMilliseconds,
-  };
-  
+        'output': output,
+        'exitCode': exitCode,
+        'completedAt': completedAt.toIso8601String(),
+        'durationMs': duration.inMilliseconds,
+      };
+
   factory CommandResult.fromJson(Map<String, dynamic> json) => CommandResult(
-    output: json['output'] as String,
-    exitCode: json['exitCode'] as int,
-    completedAt: DateTime.parse(json['completedAt'] as String),
-    duration: Duration(milliseconds: json['durationMs'] as int),
-  );
-  
+        output: json['output'] as String,
+        exitCode: json['exitCode'] as int,
+        completedAt: DateTime.parse(json['completedAt'] as String),
+        duration: Duration(milliseconds: json['durationMs'] as int),
+      );
+
   @override
   List<Object?> get props => [output, exitCode, completedAt, duration];
 }
@@ -196,7 +198,7 @@ class FileItem extends Equatable {
   final int size;
   final DateTime modifiedAt;
   final bool isHidden;
-  
+
   const FileItem({
     required this.name,
     required this.path,
@@ -205,11 +207,11 @@ class FileItem extends Equatable {
     required this.modifiedAt,
     this.isHidden = false,
   });
-  
+
   bool get isDirectory => type == FileType.directory;
   bool get isFile => type == FileType.file;
   bool get isExecutable => type == FileType.executable;
-  
+
   @override
   List<Object?> get props => [name, path, type, size, modifiedAt, isHidden];
 }
@@ -222,7 +224,7 @@ class NimConfig extends Equatable {
   final String? baseUrl;
   final double temperature;
   final int maxTokens;
-  
+
   const NimConfig({
     required this.apiKey,
     this.model = 'nvidia/llama-3.1-nemotron-70b-instruct',
@@ -230,7 +232,7 @@ class NimConfig extends Equatable {
     this.temperature = 0.7,
     this.maxTokens = 4096,
   });
-  
+
   @override
   List<Object?> get props => [apiKey, model, baseUrl, temperature, maxTokens];
 }
@@ -242,7 +244,7 @@ class ChatSession extends Equatable {
   final DateTime updatedAt;
   final List<ChatMessage> messages;
   final Map<String, dynamic>? metadata;
-  
+
   const ChatSession({
     required this.id,
     required this.name,
@@ -251,7 +253,7 @@ class ChatSession extends Equatable {
     this.messages = const [],
     this.metadata,
   });
-  
+
   ChatSession copyWith({
     String? id,
     String? name,
@@ -269,29 +271,31 @@ class ChatSession extends Equatable {
       metadata: metadata ?? this.metadata,
     );
   }
-  
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'messages': messages.map((e) => e.toJson()).toList(),
-    'metadata': metadata,
-  };
-  
+        'id': id,
+        'name': name,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'messages': messages.map((e) => e.toJson()).toList(),
+        'metadata': metadata,
+      };
+
   factory ChatSession.fromJson(Map<String, dynamic> json) => ChatSession(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    messages: (json['messages'] as List?)
-        ?.map((e) => ChatMessage.fromJson(e))
-        .toList() ?? [],
-    metadata: json['metadata'],
-  );
-  
+        id: json['id'] as String,
+        name: json['name'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        messages: (json['messages'] as List?)
+                ?.map((e) => ChatMessage.fromJson(e))
+                .toList() ??
+            [],
+        metadata: json['metadata'],
+      );
+
   @override
-  List<Object?> get props => [id, name, createdAt, updatedAt, messages, metadata];
+  List<Object?> get props =>
+      [id, name, createdAt, updatedAt, messages, metadata];
 }
 
 class Project extends Equatable {
@@ -303,7 +307,7 @@ class Project extends Equatable {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? thumbnailPath;
-  
+
   const Project({
     required this.id,
     required this.name,
@@ -314,29 +318,52 @@ class Project extends Equatable {
     required this.updatedAt,
     this.thumbnailPath,
   });
-  
+
+  Project copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? rootPath,
+    List<String>? filePaths,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? thumbnailPath,
+  }) {
+    return Project(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      rootPath: rootPath ?? this.rootPath,
+      filePaths: filePaths ?? this.filePaths,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'description': description,
-    'rootPath': rootPath,
-    'filePaths': filePaths,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'thumbnailPath': thumbnailPath,
-  };
-  
+        'id': id,
+        'name': name,
+        'description': description,
+        'rootPath': rootPath,
+        'filePaths': filePaths,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'thumbnailPath': thumbnailPath,
+      };
+
   factory Project.fromJson(Map<String, dynamic> json) => Project(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String? ?? '',
-    rootPath: json['rootPath'] as String,
-    filePaths: (json['filePaths'] as List?)?.cast<String>() ?? [],
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    thumbnailPath: json['thumbnailPath'],
-  );
-  
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String? ?? '',
+        rootPath: json['rootPath'] as String,
+        filePaths: (json['filePaths'] as List?)?.cast<String>() ?? [],
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        thumbnailPath: json['thumbnailPath'],
+      );
+
   @override
-  List<Object?> get props => [id, name, description, rootPath, filePaths, createdAt, updatedAt];
+  List<Object?> get props =>
+      [id, name, description, rootPath, filePaths, createdAt, updatedAt];
 }

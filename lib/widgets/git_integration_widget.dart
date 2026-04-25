@@ -8,24 +8,25 @@ import 'glass_container.dart';
 
 class GitIntegrationWidget extends ConsumerStatefulWidget {
   final Function(String)? onCommandGenerated;
-  
+
   const GitIntegrationWidget({
     super.key,
     this.onCommandGenerated,
   });
-  
+
   @override
-  ConsumerState<GitIntegrationWidget> createState() => _GitIntegrationWidgetState();
+  ConsumerState<GitIntegrationWidget> createState() =>
+      _GitIntegrationWidgetState();
 }
 
 class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
   bool _showHistory = false;
-  
+
   @override
   Widget build(BuildContext context) {
     final gitState = ref.watch(gitServiceProvider);
     final theme = Theme.of(context);
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -56,7 +57,7 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   Widget _buildHeader(ThemeData theme) {
     return Row(
       children: [
@@ -77,7 +78,7 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ],
     );
   }
-  
+
   Widget _buildNoRepoState(ThemeData theme) {
     return GlassContainer(
       padding: const EdgeInsets.all(24),
@@ -123,7 +124,7 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   Widget _buildRepoStatus(GitRepository repo, ThemeData theme) {
     return GlassContainer(
       padding: const EdgeInsets.all(16),
@@ -157,16 +158,16 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     ).animate().fadeIn().slideY(begin: 0.1);
   }
-  
+
   Widget _buildStatusBadge(GitRepository repo, ThemeData theme) {
     final hasChanges = repo.hasUncommittedChanges;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: hasChanges 
-          ? theme.colorScheme.errorContainer
-          : theme.colorScheme.primaryContainer,
+        color: hasChanges
+            ? theme.colorScheme.errorContainer
+            : theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -175,25 +176,25 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
           Icon(
             hasChanges ? Icons.edit : Icons.check,
             size: 14,
-            color: hasChanges 
-              ? theme.colorScheme.onErrorContainer
-              : theme.colorScheme.onPrimaryContainer,
+            color: hasChanges
+                ? theme.colorScheme.onErrorContainer
+                : theme.colorScheme.onPrimaryContainer,
           ),
           const SizedBox(width: 4),
           Text(
             hasChanges ? 'Changes' : 'Clean',
             style: TextStyle(
               fontSize: 12,
-              color: hasChanges 
-                ? theme.colorScheme.onErrorContainer
-                : theme.colorScheme.onPrimaryContainer,
+              color: hasChanges
+                  ? theme.colorScheme.onErrorContainer
+                  : theme.colorScheme.onPrimaryContainer,
             ),
           ),
         ],
       ),
     );
   }
-  
+
   Widget _buildQuickActions(GitRepository repo, ThemeData theme) {
     return Wrap(
       spacing: 8,
@@ -208,7 +209,8 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
         _QuickActionButton(
           icon: Icons.check,
           label: 'Commit',
-          onPressed: repo.stagedChanges > 0 ? () => _showCommitDialog(repo) : null,
+          onPressed:
+              repo.stagedChanges > 0 ? () => _showCommitDialog(repo) : null,
           color: theme.colorScheme.primary,
         ),
         _QuickActionButton(
@@ -238,11 +240,11 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ],
     );
   }
-  
+
   Widget _buildBranchSelector(GitServiceState state, ThemeData theme) {
     final repo = state.currentRepository;
     if (repo == null) return const SizedBox.shrink();
-    
+
     return GlassContainer(
       padding: const EdgeInsets.all(12),
       borderRadius: 12,
@@ -279,17 +281,17 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   Widget _buildStatusPanel(GitServiceState state, ThemeData theme) {
-    final terminal = TerminalService.instance;
-    
     return FutureBuilder<GitStatus>(
-      future: state.currentRepository != null 
-        ? ref.read(gitServiceProvider.notifier).getRepositoryStatus(state.currentRepository!.path)
-        : Future.value(const GitStatus()),
+      future: state.currentRepository != null
+          ? ref
+              .read(gitServiceProvider.notifier)
+              .getRepositoryStatus(state.currentRepository!.path)
+          : Future.value(const GitStatus()),
       builder: (context, snapshot) {
         final status = snapshot.data ?? const GitStatus();
-        
+
         return GlassContainer(
           padding: const EdgeInsets.all(12),
           borderRadius: 12,
@@ -301,41 +303,50 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
                 style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
-              _buildChangeCount('Modified', status.modified.length, Icons.edit, theme),
-              _buildChangeCount('Staged', status.staged.length, Icons.add_circle, theme),
-              _buildChangeCount('Untracked', status.untracked.length, Icons.help_outline, theme),
-              _buildChangeCount('Deleted', status.deleted.length, Icons.remove_circle, theme),
+              _buildChangeCount(
+                  'Modified', status.modified.length, Icons.edit, theme),
+              _buildChangeCount(
+                  'Staged', status.staged.length, Icons.add_circle, theme),
+              _buildChangeCount('Untracked', status.untracked.length,
+                  Icons.help_outline, theme),
+              _buildChangeCount(
+                  'Deleted', status.deleted.length, Icons.remove_circle, theme),
             ],
           ),
         );
       },
     );
   }
-  
-  Widget _buildChangeCount(String label, int count, IconData icon, ThemeData theme) {
+
+  Widget _buildChangeCount(
+      String label, int count, IconData icon, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: count > 0 ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.4)),
+          Icon(icon,
+              size: 16,
+              color: count > 0
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withOpacity(0.4)),
           const SizedBox(width: 8),
           Text(label),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: count > 0 
-                ? theme.colorScheme.primaryContainer
-                : theme.colorScheme.surfaceContainerHighest,
+              color: count > 0
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               count.toString(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: count > 0 
-                  ? theme.colorScheme.onPrimaryContainer
-                  : theme.colorScheme.onSurface.withOpacity(0.6),
+                color: count > 0
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ),
@@ -343,7 +354,7 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   Widget _buildRepoList(GitServiceState state, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +366,7 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
         const SizedBox(height: 8),
         ...state.repositories.map((repo) {
           final isActive = state.currentRepository?.path == repo.path;
-          
+
           return ListTile(
             leading: Icon(
               Icons.folder,
@@ -377,9 +388,13 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
               ],
               onSelected: (value) {
                 if (value == 'set_active') {
-                  ref.read(gitServiceProvider.notifier).setCurrentRepository(repo);
+                  ref
+                      .read(gitServiceProvider.notifier)
+                      .setCurrentRepository(repo);
                 } else if (value == 'remove') {
-                  ref.read(gitServiceProvider.notifier).removeRepository(repo.path);
+                  ref
+                      .read(gitServiceProvider.notifier)
+                      .removeRepository(repo.path);
                 }
               },
             ),
@@ -391,12 +406,12 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ],
     );
   }
-  
+
   Widget _buildOperationHistory(GitServiceState state, ThemeData theme) {
     if (!_showHistory) return const SizedBox.shrink();
-    
+
     final recentOps = state.operations.take(10).toList();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -408,33 +423,35 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
         ...recentOps.map((op) {
           return ListTile(
             leading: Icon(
-              op.isRunning ? Icons.sync : (op.exitCode == 0 ? Icons.check_circle : Icons.error),
-              color: op.isRunning 
-                ? theme.colorScheme.primary
-                : (op.exitCode == 0 ? Colors.green : Colors.red),
+              op.isRunning
+                  ? Icons.sync
+                  : (op.exitCode == 0 ? Icons.check_circle : Icons.error),
+              color: op.isRunning
+                  ? theme.colorScheme.primary
+                  : (op.exitCode == 0 ? Colors.green : Colors.red),
             ),
             title: Text(op.type.displayName),
             subtitle: Text(op.output ?? op.error ?? ''),
-            trailing: op.isRunning 
-              ? SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.primary,
-                  ),
-                ).animate(onPlay: (c) => c.repeat()).rotate()
-              : null,
+            trailing: op.isRunning
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ).animate(onPlay: (c) => c.repeat()).rotate()
+                : null,
           );
         }),
       ],
     );
   }
-  
+
   void _showInitDialog() {
     final pathController = TextEditingController();
     final remoteController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -469,9 +486,11 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
               Navigator.pop(context);
               if (pathController.text.isNotEmpty) {
                 ref.read(gitServiceProvider.notifier).initRepository(
-                  pathController.text,
-                  remoteUrl: remoteController.text.isNotEmpty ? remoteController.text : null,
-                );
+                      pathController.text,
+                      remoteUrl: remoteController.text.isNotEmpty
+                          ? remoteController.text
+                          : null,
+                    );
               }
             },
             child: const Text('Initialize'),
@@ -480,11 +499,11 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   void _showCloneDialog() {
     final urlController = TextEditingController();
     final pathController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -517,11 +536,12 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              if (urlController.text.isNotEmpty && pathController.text.isNotEmpty) {
+              if (urlController.text.isNotEmpty &&
+                  pathController.text.isNotEmpty) {
                 ref.read(gitServiceProvider.notifier).cloneRepository(
-                  urlController.text,
-                  pathController.text,
-                );
+                      urlController.text,
+                      pathController.text,
+                    );
               }
             },
             child: const Text('Clone'),
@@ -530,10 +550,10 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   void _showCommitDialog(GitRepository repo) {
     final messageController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -555,7 +575,9 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
             onPressed: () {
               Navigator.pop(context);
               if (messageController.text.isNotEmpty) {
-                ref.read(gitServiceProvider.notifier).commit(messageController.text);
+                ref
+                    .read(gitServiceProvider.notifier)
+                    .commit(messageController.text);
               }
             },
             child: const Text('Commit'),
@@ -564,12 +586,13 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   void _showCheckoutDialog(GitRepository repo) async {
-    final branches = await ref.read(gitServiceProvider.notifier).getBranches(repo.path);
-    
+    final branches =
+        await ref.read(gitServiceProvider.notifier).getBranches(repo.path);
+
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -582,13 +605,18 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
             itemBuilder: (context, index) {
               final branch = branches[index];
               return ListTile(
-                leading: Icon(branch.isCurrent ? Icons.check : Icons.account_tree),
+                leading:
+                    Icon(branch.isCurrent ? Icons.check : Icons.account_tree),
                 title: Text(branch.name),
                 selected: branch.isCurrent,
-                onTap: branch.isCurrent ? null : () {
-                  Navigator.pop(context);
-                  ref.read(gitServiceProvider.notifier).checkout(branch.name);
-                },
+                onTap: branch.isCurrent
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                        ref
+                            .read(gitServiceProvider.notifier)
+                            .checkout(branch.name);
+                      },
               );
             },
           ),
@@ -596,10 +624,10 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   void _showNewBranchDialog(GitRepository repo) {
     final nameController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -620,7 +648,9 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
             onPressed: () {
               Navigator.pop(context);
               if (nameController.text.isNotEmpty) {
-                ref.read(gitServiceProvider.notifier).checkout(nameController.text, createNew: true);
+                ref
+                    .read(gitServiceProvider.notifier)
+                    .checkout(nameController.text, createNew: true);
               }
             },
             child: const Text('Create'),
@@ -629,23 +659,25 @@ class _GitIntegrationWidgetState extends ConsumerState<GitIntegrationWidget> {
       ),
     );
   }
-  
+
   void _stageAll(GitRepository repo) {
     ref.read(gitServiceProvider.notifier).stageFile(repo.path, stageAll: true);
   }
-  
+
   void _push(GitRepository repo) {
     ref.read(gitServiceProvider.notifier).push();
   }
-  
+
   void _pull(GitRepository repo) {
     ref.read(gitServiceProvider.notifier).pull();
   }
-  
+
   void _fetch(GitRepository repo) {
-    ref.read(gitServiceProvider.notifier).stageFile('git fetch', stageAll: true);
+    ref
+        .read(gitServiceProvider.notifier)
+        .stageFile('git fetch', stageAll: true);
   }
-  
+
   void _checkout(GitRepository repo, String branch) {
     ref.read(gitServiceProvider.notifier).checkout(branch);
   }
@@ -656,23 +688,25 @@ class _QuickActionButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final Color color;
-  
+
   const _QuickActionButton({
     required this.icon,
     required this.label,
     this.onPressed,
     required this.color,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isEnabled = onPressed != null;
-    
+
     return Opacity(
       opacity: isEnabled ? 1.0 : 0.5,
       child: Material(
-        color: isEnabled ? color.withOpacity(0.1) : theme.colorScheme.surfaceContainerHighest,
+        color: isEnabled
+            ? color.withOpacity(0.1)
+            : theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onPressed,
@@ -682,13 +716,19 @@ class _QuickActionButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 16, color: isEnabled ? color : theme.colorScheme.onSurface.withOpacity(0.4)),
+                Icon(icon,
+                    size: 16,
+                    color: isEnabled
+                        ? color
+                        : theme.colorScheme.onSurface.withOpacity(0.4)),
                 const SizedBox(width: 6),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isEnabled ? color : theme.colorScheme.onSurface.withOpacity(0.4),
+                    color: isEnabled
+                        ? color
+                        : theme.colorScheme.onSurface.withOpacity(0.4),
                   ),
                 ),
               ],

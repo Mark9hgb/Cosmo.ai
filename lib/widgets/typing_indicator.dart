@@ -8,7 +8,7 @@ class TypingIndicator extends StatefulWidget {
   final int dotCount;
   final double dotSize;
   final Color? color;
-  
+
   const TypingIndicator({
     super.key,
     this.type = IndicatorType.dots,
@@ -16,7 +16,7 @@ class TypingIndicator extends StatefulWidget {
     this.dotSize = 8,
     this.color,
   });
-  
+
   @override
   State<TypingIndicator> createState() => _TypingIndicatorState();
 }
@@ -25,13 +25,13 @@ class _TypingIndicatorState extends State<TypingIndicator>
     with TickerProviderStateMixin {
   late List<AnimationController> _controllers;
   late List<Animation<double>> _animations;
-  
+
   @override
   void initState() {
     super.initState();
     _initAnimations();
   }
-  
+
   void _initAnimations() {
     _controllers = List.generate(
       widget.dotCount,
@@ -40,13 +40,13 @@ class _TypingIndicatorState extends State<TypingIndicator>
         duration: const Duration(milliseconds: 600),
       ),
     );
-    
+
     _animations = _controllers.map((controller) {
       return Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(parent: controller, curve: Curves.easeInOut),
       );
     }).toList();
-    
+
     for (int i = 0; i < _controllers.length; i++) {
       Future.delayed(Duration(milliseconds: 150 * i), () {
         if (mounted) {
@@ -55,7 +55,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
       });
     }
   }
-  
+
   @override
   void dispose() {
     for (final controller in _controllers) {
@@ -63,12 +63,12 @@ class _TypingIndicatorState extends State<TypingIndicator>
     }
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = widget.color ?? theme.colorScheme.primary;
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -99,7 +99,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
                     width: widget.dotSize,
                     height: widget.dotSize,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.5 + (_animations[index].value * 0.5)),
+                      color: color
+                          .withOpacity(0.5 + (_animations[index].value * 0.5)),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -111,7 +112,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
       ],
     );
   }
-  
+
   String _getPrefixText() {
     switch (widget.type) {
       case IndicatorType.typing:
@@ -127,17 +128,17 @@ class _TypingIndicatorState extends State<TypingIndicator>
 class ThinkingIndicator extends StatelessWidget {
   final String? thought;
   final VoidCallback? onCancel;
-  
+
   const ThinkingIndicator({
     super.key,
     this.thought,
     this.onCancel,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -185,9 +186,7 @@ class ThinkingIndicator extends StatelessWidget {
           const TypingIndicator(type: IndicatorType.thinking),
         ],
       ),
-    ).animate()
-      .fadeIn()
-      .slideY(begin: 0.1, curve: Curves.easeOut);
+    ).animate().fadeIn().slideY(begin: 0.1, curve: Curves.easeOut);
   }
 }
 
@@ -195,22 +194,22 @@ class MessageStatus extends StatelessWidget {
   final MessageStatusType status;
   final DateTime? timestamp;
   final VoidCallback? onRetry;
-  
+
   const MessageStatus({
     super.key,
     required this.status,
     this.timestamp,
     this.onRetry,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     IconData icon;
     Color color;
     String text;
-    
+
     switch (status) {
       case MessageStatusType.sending:
         icon = Icons.schedule;
@@ -237,7 +236,7 @@ class MessageStatus extends StatelessWidget {
         color = theme.colorScheme.onSurface.withOpacity(0.5);
         text = 'Pending';
     }
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -286,7 +285,7 @@ class StreamingText extends StatelessWidget {
   final TextStyle? style;
   final bool showCursor;
   final Color? cursorColor;
-  
+
   const StreamingText({
     super.key,
     required this.text,
@@ -294,12 +293,13 @@ class StreamingText extends StatelessWidget {
     this.showCursor = true,
     this.cursorColor,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final effectiveStyle = style ?? TextStyle(color: theme.colorScheme.onSurface);
-    
+    final effectiveStyle =
+        style ?? TextStyle(color: theme.colorScheme.onSurface);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -311,10 +311,11 @@ class StreamingText extends StatelessWidget {
             height: effectiveStyle.fontSize ?? 14,
             margin: const EdgeInsets.only(left: 2, bottom: 2),
             color: cursorColor ?? theme.colorScheme.primary,
-          ).animate(onPlay: (c) => c.repeat())
-            .fadeIn(duration: 300.ms)
-            .then()
-            .fadeOut(duration: 300.ms),
+          )
+              .animate(onPlay: (c) => c.repeat())
+              .fadeIn(duration: 300.ms)
+              .then()
+              .fadeOut(duration: 300.ms),
       ],
     );
   }
@@ -323,17 +324,17 @@ class StreamingText extends StatelessWidget {
 class CommandExecutingIndicator extends StatelessWidget {
   final String command;
   final VoidCallback? onCancel;
-  
+
   const CommandExecutingIndicator({
     super.key,
     required this.command,
     this.onCancel,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -387,9 +388,7 @@ class CommandExecutingIndicator extends StatelessWidget {
             ),
         ],
       ),
-    ).animate()
-      .fadeIn()
-      .slideX(begin: -0.05);
+    ).animate().fadeIn().slideX(begin: -0.05);
   }
 }
 
@@ -398,7 +397,7 @@ class ProcessingOverlay extends StatelessWidget {
   final String? subtitle;
   final double? progress;
   final VoidCallback? onCancel;
-  
+
   const ProcessingOverlay({
     super.key,
     required this.title,
@@ -406,11 +405,11 @@ class ProcessingOverlay extends StatelessWidget {
     this.progress,
     this.onCancel,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       color: Colors.black54,
       child: Center(
@@ -441,7 +440,9 @@ class ProcessingOverlay extends StatelessWidget {
                   child: CircularProgressIndicator(
                     color: theme.colorScheme.primary,
                   ),
-                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1.seconds),
+                )
+                    .animate(onPlay: (c) => c.repeat())
+                    .rotate(duration: 1.seconds),
               const SizedBox(height: 20),
               Text(
                 title,
@@ -469,7 +470,6 @@ class ProcessingOverlay extends StatelessWidget {
           ),
         ),
       ),
-    ).animate()
-      .fadeIn(duration: 200.ms);
+    ).animate().fadeIn(duration: 200.ms);
   }
 }
