@@ -1,21 +1,14 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:xterm/xterm.dart';
-import 'package:uuid/uuid.dart';
-import '../models/chat_message.dart';
-import '../services/terminal_service.dart';
-import '../services/nvidia_nim_service.dart';
-import '../services/command_memory_service.dart';
-import '../widgets/sidebar.dart';
-import '../widgets/chat_list.dart';
-import '../widgets/terminal_view.dart';
-import '../widgets/settings_panel.dart';
+import 'models/chat_message.dart';
+import 'services/terminal_service.dart';
+import 'services/nvidia_nim_service.dart';
+import 'widgets/sidebar.dart';
+import 'widgets/settings_panel.dart';
 
 final selectedTabProvider = StateProvider<int>((ref) => 0);
-final sidebarExpandedProvider = StateProvider<bool>((ref) => true);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -24,8 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -37,14 +29,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     _terminal = Terminal(maxLines: 10000);
-    WidgetsBinding.instance.addObserver(this);
     _initTerminal();
   }
 
   Future<void> _initTerminal() async {
     final service = ref.read(terminalServiceProvider);
     await service.initialize();
-    _terminal.write('\x1B[1mCosmo AI Terminal\x1B[0m\r\n');
+    _terminal.write('Cosmo AI Terminal\r\n');
     _terminal.write('Type a message to start...\r\n\r\n');
   }
 
@@ -53,14 +44,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedTab = ref.watch(selectedTabProvider);
-    final sidebarExpanded = ref.watch(sidebarExpandedProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -82,9 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Column(
                 children: [
                   _buildHeader(),
-                  Expanded(
-                    child: _buildContent(selectedTab),
-                  ),
+                  Expanded(child: _buildContent(selectedTab)),
                   _buildInputBar(),
                 ],
               ),
@@ -101,29 +88,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.1),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1))),
       ),
       child: Row(
         children: [
-          Text(
-            'Cosmo AI',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text('Cosmo AI', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const Spacer(),
           if (_isLoading)
             SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.primary,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary),
             ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1.seconds),
         ],
       ),
@@ -154,9 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       padding: const EdgeInsets.all(16),
       itemCount: messages.length + (_isThinking ? 1 : 0),
       itemBuilder: (context, index) {
-        if (_isThinking && index == messages.length) {
-          return _buildThinkingIndicator();
-        }
+        if (_isThinking && index == messages.length) return _buildThinkingIndicator();
         if (index >= messages.length) return const SizedBox.shrink();
 
         final message = messages[index];
@@ -165,37 +138,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Align(
           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isUser
-                  ? theme.colorScheme.primaryContainer
-                  : theme.colorScheme.surfaceContainerHighest,
+              color: isUser ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.content,
-                  style: TextStyle(
-                    color: isUser
-                        ? theme.colorScheme.onPrimaryContainer
-                        : theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatTime(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                ),
-              ],
+            child: Text(
+              message.content,
+              style: TextStyle(
+                color: isUser ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
+              ),
             ),
           ),
         ).animate().fadeIn(delay: (index * 30).ms);
@@ -233,11 +187,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.1),
-          ),
-        ),
+        border: Border(top: BorderSide(color: theme.colorScheme.outline.withOpacity(0.1))),
       ),
       child: Row(
         children: [
@@ -249,16 +199,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               minLines: 1,
               decoration: InputDecoration(
                 hintText: 'Type a message...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                 filled: true,
                 fillColor: theme.colorScheme.surfaceContainerHighest,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               onSubmitted: (_) => _sendMessage(),
             ),
@@ -269,14 +213,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(
-                _isLoading ? Icons.hourglass_empty : Icons.send,
-                color: Colors.white,
-              ),
+              decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(24)),
+              child: Icon(_isLoading ? Icons.hourglass_empty : Icons.send, color: Colors.white),
             ),
           ),
         ],
@@ -293,16 +231,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     ref.read(nimMessagesProvider.notifier).addUserMessage(message);
 
-    setState(() {
-      _isLoading = true;
-      _isThinking = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final service = ref.read(nvidiaNimServiceProvider);
       final messages = ref.read(nimMessagesProvider);
 
-      _terminal.writeln('\$ $message');
+      _terminal.write('\$ message\r\n');
 
       final stream = service.sendMessageStream(messages);
       final buffer = StringBuffer();
@@ -319,18 +254,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     } catch (e) {
       ref.read(nimMessagesProvider.notifier).addAssistantMessage('Error: $e');
-      _terminal.writeln('[Error: $e]');
+      _terminal.write('Error: $e\r\n');
     } finally {
-      setState(() {
-        _isLoading = false;
-        _isThinking = false;
-      });
+      setState(() => _isLoading = false);
       _scrollToBottom();
     }
   }
 
   void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback(() {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -339,10 +271,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         );
       }
     });
-  }
-
-  String _formatTime(DateTime time) {
-    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -359,16 +287,6 @@ class _Dot extends StatelessWidget {
         color: Theme.of(context).colorScheme.primary,
         shape: BoxShape.circle,
       ),
-    ).animate(delay: delay).scale(
-          begin: const Offset(0.5, 0.5),
-          end: const Offset(1, 1),
-          curve: Curves.easeInOut,
-        )
-        .then()
-        .scale(
-          begin: const Offset(1, 1),
-          end: const Offset(0.5, 0.5),
-          curve: Curves.easeInOut,
-        );
+    ).animate(delay: delay).scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1)).then().scale(begin: const Offset(1, 1), end: const Offset(0.5, 0.5));
   }
 }
