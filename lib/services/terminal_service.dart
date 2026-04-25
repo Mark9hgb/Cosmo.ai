@@ -36,7 +36,8 @@ class TerminalService {
         action: _termuxRunCommandAction,
         package: _termuxPackage,
       );
-      return await intent.canResolveActivity();
+      final result = await intent.canResolveActivity();
+      return result ?? false;
     } catch (_) {
       return false;
     }

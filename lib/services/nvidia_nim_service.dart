@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -133,7 +134,7 @@ You can also respond normally in chat when terminal access isn't needed.
     var toolCallBuffer = '';
     var bufferingToolCall = false;
 
-    await for (final chunk in responseBody.stream.transform(utf8.decoder)) {
+    await for (final chunk in responseBody.stream.cast<Uint8List>().transform(utf8.decoder)) {
       lineBuffer += chunk;
       final lines = lineBuffer.split('\n');
       lineBuffer = lines.removeLast();

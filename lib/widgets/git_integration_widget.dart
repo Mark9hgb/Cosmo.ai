@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/git_models.dart';
 import '../services/git_service.dart';
-import '../services/terminal_service.dart';
 import 'glass_container.dart';
 
 class GitIntegrationWidget extends ConsumerStatefulWidget {
